@@ -341,8 +341,8 @@ std::vector<std::string> Frontend::upgrade_effect_lines(size_t index)const{
  for(const auto& [key,label]:fields){
   const double before=numeric_setting(base,key),after=numeric_setting(preview,key,before);
   if(std::abs(after-before)<1e-5)continue;
-  const bool small=std::abs(before)<10||std::abs(after-before)<.2;
-  std::ostringstream line;line.setf(std::ios::fixed);line.precision(small?2:0);
+  const bool small_change=std::abs(before)<10||std::abs(after-before)<.2;
+  std::ostringstream line;line.setf(std::ios::fixed);line.precision(small_change?2:0);
   line<<label<<": "<<before<<" > "<<after;
   result.push_back(line.str());
  }

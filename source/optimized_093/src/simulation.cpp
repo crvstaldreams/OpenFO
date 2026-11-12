@@ -135,6 +135,10 @@ struct Simulation::Impl {
   }
  }
  struct Bot {bool finished=false;RaceOpponentConfig config;RaceAIController controller;std::unique_ptr<Impl>vehicle;Bot(RaceOpponentConfig c,RaceRoute r):config(std::move(c)),controller(std::move(r),config.behavior,size_t(config.id),config.vehicle){} };std::vector<std::unique_ptr<Bot>>bots;
+ // Persistent AI scheduling state (one command per opponent).
+ CpuTaskLanes ai_lanes;
+ std::vector<AICommand> ai_commands;
+ double ai_plan_ms=0;
 
  Impl(const Geometry&g,VehicleConfig c,Mat start,std::vector<VehiclePanelDefinition>panel_defs,std::shared_ptr<const NativeDriver>dm,DriverPlacement dp,std::shared_ptr<PhysicsScene> shared={}):driver_model(std::move(dm)),driver_placement(dp),scene(shared?shared:std::make_shared<PhysicsScene>(g)),world(scene->world),dispatcher(scene->dispatcher),track_normals(scene->track_normals),track_planes(scene->track_planes),track_materials(scene->track_materials),water_materials(scene->water_materials),water_object(scene->water_object),water_shape(scene->water_shape),track(scene->track),props(scene->props),cfg(std::move(c)),handling(cfg),spawn(start){primary=!shared;material_sounds=scene->material_sounds;derby=race_mode(g.source)==RaceMode::Battle;stunt=race_mode(g.source)==RaceMode::Stunt;
 
@@ -426,7 +430,7 @@ struct Simulation::Impl {
   const auto ai_start=std::chrono::steady_clock::now();
   ai_lanes.for_each(bots.size(),[&](size_t i){auto&b=*bots[i];ai_commands[i]=b.finished?AICommand{}:b.controller.update(traffic[i+1],traffic,dt);});
   ai_plan_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-ai_start).count();
-  for(size_t i=0;i<bots.size();++i){auto&b=*bots[i];const auto&command=ai_commands[i];if(command.recover){
+  for(size_t i=0;i<bots.size();++i){auto&b=*bots[i];auto&command=ai_commands[i];if(command.recover){
    // Native spline Y is often an editor handle height (0/20), not road elevation.
    // Recover against actual shared track triangles at the current road level.
    auto&vehicle=*b.vehicle;auto p=point(command.recovery,{});float level=vehicle.model()[13];btVector3 from(p.x,level+8,p.z),to(p.x,level-60,p.z);btCollisionWorld::ClosestRayResultCallback ground(from,to);ground.m_collisionFilterGroup=2;ground.m_collisionFilterMask=1;world.rayTest(from,to,ground);if(ground.hasHit()){command.recovery[13]=ground.m_hitPointWorld.y()+.6f;vehicle.spawn=command.recovery;}vehicle.recover();}if(b.vehicle->drivetrain.gear<1){b.vehicle->drivetrain.gear=1;b.vehicle->pose.gear=1;}Input control;control.throttle=command.throttle;control.brake=command.brake;control.steer=command.steer;if(b.finished){control.brake=1;control.handbrake=1;}b.vehicle->prepare(control,dt);}

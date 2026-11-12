@@ -54,14 +54,18 @@ if (!(Test-Path -LiteralPath $stbOut)) {
     Get-FileOnce 'https://raw.githubusercontent.com/nothings/stb/9f755b604db3492df2cbeb39bf84b81e3e3932e3/stb_vorbis.c' $stb
     Copy-Item -LiteralPath $stb -Destination $stbOut
 }
-$jsonOut = Join-Path $vendor 'nlohmann/json.hpp'
-if (!(Test-Path -LiteralPath $jsonOut)) {
-    $jsonArchive = Join-Path $CacheDir 'nlohmann-json-v3.11.3.hpp'
-    Get-FileOnce 'https://raw.githubusercontent.com/nlohmann/json/v3.11.3/single_include/nlohmann/json.hpp' $jsonArchive
-    $expectedJsonSha256 = '9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6'
-    if ((Get-FileHash -LiteralPath $jsonArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedJsonSha256) { throw 'nlohmann json.hpp hash mismatch; source archive not trusted' }
-    New-Item -ItemType Directory -Force -Path (Split-Path $jsonOut) | Out-Null
-    Copy-Item -LiteralPath $jsonArchive -Destination $jsonOut -Force
+# Windows SDK ships legacy GL/gl.h but does not ship the OpenGL extension header.
+# Pin Khronos header snapshots for deterministic MSVC builds.
+$glDir = Join-Path $vendor 'GL'
+$khrDir = Join-Path $vendor 'KHR'
+New-Item -ItemType Directory -Force -Path $glDir, $khrDir | Out-Null
+$glExt = Join-Path $glDir 'glext.h'
+if (!(Test-Path -LiteralPath $glExt)) {
+    Get-FileOnce 'https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/6af574a14089ccfee87efe230ebcdd8742859813/api/GL/glext.h' $glExt
+}
+$khrPlatform = Join-Path $khrDir 'khrplatform.h'
+if (!(Test-Path -LiteralPath $khrPlatform)) {
+    Get-FileOnce 'https://raw.githubusercontent.com/KhronosGroup/EGL-Registry/8e56e86e65687697ef54114cdb1afabdfac756bf/api/KHR/khrplatform.h' $khrPlatform
 }
 $required = @(
     (Join-Path $bullet 'btBulletDynamicsCommon.h'),
@@ -69,6 +73,8 @@ $required = @(
     (Join-Path $mesh 'meshoptimizer.h'),
     (Join-Path $mesh 'simplifier.cpp'),
     (Join-Path $mesh 'allocator.cpp'),
+    $glExt,
+    $khrPlatform,
     $stbOut,
     (Join-Path $vendor 'nlohmann/json.hpp')
 )

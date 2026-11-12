@@ -1,5 +1,8 @@
 #pragma once
 #include "lan_session.hpp"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <mmsystem.h>
 
