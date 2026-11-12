@@ -1,0 +1,29 @@
+{
+  "version": "0.8.4",
+  "type": "Windows x64 update for OpenFO Reboot 0.8.3",
+  "network_protocol": 3,
+  "toolchain": "Zig 0.14.1 x86_64-windows-gnu",
+  "master_server": "34.118.26.31:27267",
+  "editable_bed": "openfo_scripts/settings.bed",
+  "executables": [
+    "OpenFO.exe",
+    "OpenFO_D3D9.exe",
+    "OpenFO_Diagnostics_OpenGL.exe",
+    "OpenFO_Diagnostics_D3D9.exe"
+  ],
+  "verification": {
+    "focused_ctest_passed": 33,
+    "ui_layout_with_original_assets": true,
+    "six_native_stunt_events_tested": true,
+    "lan_and_dedicated_room_loopback_tested": true,
+    "three_native_battle_events_tested": true,
+    "d3d9_shader_contract_tested": true,
+    "d3d9_shader_runtime_tested": false,
+    "windows_runtime_tested": false,
+    "public_cloud_runtime_tested": false
+  },
+  "local_build_kit": true,
+  "local_source_branch": "baseline_084",
+  "compiled": false,
+  "windows_runtime_tested": false
+}

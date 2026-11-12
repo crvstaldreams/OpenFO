@@ -1,0 +1,4 @@
+#include "material_bindings.hpp"
+#include <stdexcept>
+#include <iostream>
+int main(int argc,char**argv){try{if(argc<2)return 0;ofo::Resources r(argv[1]);auto g=ofo::load_geometry(r,"tracks/forest/forest1/geometry/track_geom.w32");size_t n=0;for(auto&m:g.materials)if(ofo::lower(m.texture[0])=="colormap.tga"){auto a=ofo::native_material_texture(r,g.source,m,0,"tracks/forest/forest1/a/lighting/lightmap1_w2.dds");if(a!="tracks/forest/forest1/a/lighting/lightmap1_w2.dds")throw std::runtime_error("runtime colormap alias must resolve stage lightmap as native slot0");auto b=ofo::native_material_texture(r,g.source,m,1,"tracks/forest/forest1/a/lighting/lightmap1_w2.dds");if(b.empty()||!r.exists(b))throw std::runtime_error("native slot1 detail texture missing");n++;}if(!n)throw std::runtime_error("native terrain fixture missing");std::cout<<n<<" actual native colormap/detail bindings passed\n";}catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

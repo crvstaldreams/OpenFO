@@ -1,0 +1,16 @@
+-- OpenFO settings in the original FlatOut BED table syntax.
+-- Reloaded on game restart. online_server.txt takes precedence.
+OpenFO = {
+    Multiplayer = {
+        MasterServer = "34.118.26.31:27267",
+    },
+    Stunts = {
+        AimTimeScale = 0.25,           -- 0.05 to 1.0
+        AngleDegreesPerSecond = 70,    -- 1 to 180
+    },
+    Lobby = {
+        SettingsTop = 97,             -- 85 to 103, on the 640x480 canvas
+        SettingsRowHeight = 32,       -- 28 to 32
+        RosterRowHeight = 30,         -- 26 to 30
+    },
+}

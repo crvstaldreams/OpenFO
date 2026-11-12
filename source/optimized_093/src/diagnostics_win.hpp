@@ -1,0 +1,16 @@
+#pragma once
+#include "file_io.hpp"
+#include <atomic>
+#include <mutex>
+#include <cstdio>
+#include <dbghelp.h>
+namespace ofo {
+inline std::filesystem::path diagnostic_dir;
+inline std::atomic<const char*> last_phase{"startup"};
+inline wchar_t crash_path[32768]{},dump_path[32768]{},system_dbghelp[32768]{};
+inline void trace(const char* phase,const std::string& detail={}) noexcept {last_phase.store(phase);try{static std::mutex lock;std::lock_guard<std::mutex> guard(lock);auto p=diagnostic_dir/L"resource_trace.log";HANDLE h=CreateFileW(p.c_str(),FILE_APPEND_DATA,FILE_SHARE_READ,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(h==INVALID_HANDLE_VALUE)return;std::string line=std::to_string(GetTickCount64())+" thread="+std::to_string(GetCurrentThreadId())+" "+phase+" "+detail+"\r\n";DWORD done;WriteFile(h,line.data(),DWORD(line.size()),&done,nullptr);FlushFileBuffers(h);CloseHandle(h);}catch(...){} }
+inline LONG WINAPI crash_filter(EXCEPTION_POINTERS* ex){static std::atomic_flag active=ATOMIC_FLAG_INIT;if(active.test_and_set())return EXCEPTION_EXECUTE_HANDLER;char report[2048]{};auto addr=ex->ExceptionRecord->ExceptionAddress;HMODULE module=nullptr;GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(addr),&module);int length=std::snprintf(report,sizeof report,"OpenFO 0.6.5 crash\r\ncode=0x%08lX\r\naddress=%p\r\nmodule=%p\r\nrva=0x%llX\r\nphase=%s\r\nthread=%lu\r\n",static_cast<unsigned long>(ex->ExceptionRecord->ExceptionCode),addr,module,static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(addr)-reinterpret_cast<uintptr_t>(module)),last_phase.load(),GetCurrentThreadId());HANDLE h=CreateFileW(crash_path,GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(h!=INVALID_HANDLE_VALUE){DWORD done;WriteFile(h,report,DWORD(std::max(0,std::min(length,int(sizeof report)-1))),&done,nullptr);FlushFileBuffers(h);CloseHandle(h);}
+ if(system_dbghelp[0]){if(auto lib=LoadLibraryW(system_dbghelp)){using Dump=BOOL(WINAPI*)(HANDLE,DWORD,HANDLE,MINIDUMP_TYPE,const PMINIDUMP_EXCEPTION_INFORMATION,const PMINIDUMP_USER_STREAM_INFORMATION,const PMINIDUMP_CALLBACK_INFORMATION);auto dump=reinterpret_cast<Dump>(GetProcAddress(lib,"MiniDumpWriteDump"));auto f=CreateFileW(dump_path,GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(dump&&f!=INVALID_HANDLE_VALUE){MINIDUMP_EXCEPTION_INFORMATION info{GetCurrentThreadId(),ex,FALSE};dump(GetCurrentProcess(),GetCurrentProcessId(),f,MiniDumpNormal,&info,nullptr,nullptr);}if(f!=INVALID_HANDLE_VALUE)CloseHandle(f);FreeLibrary(lib);}}
+ return EXCEPTION_EXECUTE_HANDLER;}
+inline void install_diagnostics(const std::filesystem::path& root){diagnostic_dir=root/L"OpenFO_Diagnostics";std::filesystem::create_directories(diagnostic_dir);auto c=(diagnostic_dir/L"crash_report.txt").wstring(),d=(diagnostic_dir/L"crash.dmp").wstring();if(c.size()>=32768||d.size()>=32768)throw std::runtime_error("Diagnostic path too long");std::wcscpy(crash_path,c.c_str());std::wcscpy(dump_path,d.c_str());auto n=GetSystemDirectoryW(system_dbghelp,32740);if(n&&n<32740)std::wcscat(system_dbghelp,L"\\dbghelp.dll");else system_dbghelp[0]=0;ULONG guarantee=131072;SetThreadStackGuarantee(&guarantee);SetUnhandledExceptionFilter(crash_filter);trace("session_start","OpenFO 0.6.5");}
+}

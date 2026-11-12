@@ -1,0 +1,6 @@
+#include "frontend.hpp"
+#include <iostream>
+#include <stdexcept>
+using namespace ofo;
+void need(bool b,const char*s){if(!b)throw std::runtime_error(s);}
+int main(int argc,char**argv){try{Resources r(argv[1]);Frontend m(r,{});m.language=UiLanguage::Ukrainian;size_t count=0;for(size_t i=0;i<m.track_slots.size();++i){m.select_track(i);m.page=MenuPage::RaceSetup;auto name=m.names.at(m.choice.track);if(ui_localize(name,m.language)!=name){std::cerr<<"name="<<name<<" translated="<<ui_localize(name,m.language)<<"\n";}need(ui_localize(name,m.language)==name,"native track name dictionary identity");for(auto wh:{std::pair<int,int>{1280,720},{1920,1080},{640,480}}){bool found=false;for(const auto&d:m.draw_commands(wh.first,wh.second))if(d.kind==FrontendDraw::Text&&d.value==name)found=true;need(found,"track name remains original in Ukrainian menu");}++count;}need(count>=48,"all native track slots checked");need(ui_localize("SELECT RACE",m.language)=="ВИБІР ПЕРЕГОНІВ","surrounding UI still Ukrainian");need(ui_localize("TRACK: PINEWOOD QUALIFIER",m.language)=="ТРАСА: PINEWOOD QUALIFIER","mixed label preserves proper name");std::cout<<count<<" original track names preserved across Ukrainian layouts\n";}catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

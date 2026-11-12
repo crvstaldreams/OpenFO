@@ -1,0 +1,27 @@
+# Generated files and vendored archives are downloaded by the workflow
+.build/
+build/
+output/
+.downloads/
+.tools/
+.vs/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/Testing/
+**/vendor/bullet/
+**/vendor/meshoptimizer/
+**/vendor/stb_vorbis.cpp
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.dll
+*.zip
+# Original FlatOut assets are not part of this repository
+**/data/
+**/cars/
+**/tracks/
+**/music/
+**/textures/
+**/savegame/
+**/saves/

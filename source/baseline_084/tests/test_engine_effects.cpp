@@ -1,0 +1,15 @@
+#include "engine_effects.hpp"
+#include "meter_artwork.hpp"
+#include "frontend.hpp"
+#include <iostream>
+#include <stdexcept>
+using namespace ofo;
+void need(bool b,const char*m){if(!b)throw std::runtime_error(m);}
+int main(int argc,char**argv){try{
+ EffectParameters p;if(argc>1){Resources r(argv[1]);p=load_effect_parameters(r);need(p.loaded,"native effect file parsed");need(std::abs(p.fire_start-.7f)<1e-6f,"native fire threshold");need(p.fire_offset.y==.5f&&p.fire_offset.z==1.5f,"native hood offset");Frontend f(r);f.page=MenuPage::Main;need(f.showroom(0).title_smoke,"slot20 wreck smoke stays on in main menu");f.page=MenuPage::Garage;need(!f.showroom(0).title_smoke,"dealer car not smoking");}
+ need(engine_damage_stage(0,p)==0,"intact car no smoke");need(engine_damage_stage(.3f,p)==1,"light smoke stage");need(engine_damage_stage(.6f,p)==2,"heavy smoke stage");need(engine_damage_stage(1,p)==3,"maximum damage fire");need(engine_damage_stage(.7f,p)==3,"native fire transition");
+ auto clean=engine_effect_vertices(p,0,{0,0,0},{},{1,0,0},{0,1,0},10);need(clean.smoke.empty()&&clean.fire.empty(),"healthy engine no particles");auto burned=engine_effect_vertices(p,1,{1,2,3},{5,0,0},{1,0,0},{0,1,0},10);need(!burned.smoke.empty()&&!burned.fire.empty(),"damaged engine has actual smoke/fire geometry");for(auto*batch:{&burned.smoke,&burned.fire})for(auto&v:*batch){need(std::isfinite(v.position.x)&&std::isfinite(v.position.y)&&v.u>=0&&v.u<=1&&v.v>=0&&v.v<=1,"finite bounded particle vertices/atlas UV");}
+ for(const auto&v:burned.fire)need((v.color>>24)<=122,"fire opacity remains below half for visible scenery");for(const auto&v:burned.smoke)need((v.color>>24)<=28,"heavy smoke uses weaker alpha");ImpactDamage damage;for(int i=0;i<1000;i++){damage.tick(.01f);damage.hit(.1f,100,870);}need(damage.value()==0,"resting solver loads cannot damage car");damage.hit(12,18000,870);need(damage.value()>0,"real impact raises damage");float first=damage.value();damage.hit(12,18000,870);need(damage.value()==first,"one crash cooldown prevents repeated damage");for(int i=0;i<20;i++){damage.tick(.2f);damage.hit(30,30000,870);}need(damage.value()==1,"damage clamps at maximum");damage.reset();need(damage.value()==0,"restart damage reset");
+ auto empty=meter_artwork(false,false,0,0),nitro=meter_artwork(false,false,.5f,0),derby=meter_artwork(true,false,1,.8f);need(empty.size()==1&&empty[0].texture=="global/overlay/meters_basen.dds","original nitro face");bool lit=false;for(auto&layer:nitro){need(layer.texture.find("meters_basen")!=std::string::npos,"native atlas only, no replacement art");lit|=layer.texture.find("_lit")!=std::string::npos;}need(lit,"nitro fills original lit artwork");lit=false;for(auto&layer:derby)lit|=layer.texture=="global/overlay/meters_based_lit.dds";need(lit,"damage fills original damage artwork");
+ std::cout<<"engine effects: native parameters/atlas, damage stages/contact immunity, menu wreck, nitro/damage original art passed\n";
+ }catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

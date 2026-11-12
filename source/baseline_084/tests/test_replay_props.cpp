@@ -1,0 +1,4 @@
+#include "replay.hpp"
+#include <stdexcept>
+#include <iostream>
+int main(){ofo::Replay replay;for(int i=0;i<1800;i++){ofo::State s;s.time=i*.01;s.driver_ejected=i>100;s.props=std::make_shared<const std::vector<ofo::PropPose>>(1500,ofo::PropPose{0,ofo::translate({float(i),0,0})});replay.record(s);}auto d=replay.diagnostics();if(d.at("bytes").get<size_t>()>128u*1024*1024||d.at("frames").get<size_t>()>=1800)throw std::runtime_error("dynamic replay byte budget");replay.begin();auto start=replay.sample();if(!start.props||start.props->empty()||start.time<=0)throw std::runtime_error("bounded prop replay sample");replay.seek(1000);auto end=replay.sample();if(end.props->at(0).transform[12]!=1799)throw std::runtime_error("last prop transform");replay.clear();if(replay.available()||replay.diagnostics().at("bytes")!=0)throw std::runtime_error("replay clear");std::cout<<"sparse prop poses and128MiB replay budget passed\n";}

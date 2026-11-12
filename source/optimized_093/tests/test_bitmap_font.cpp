@@ -1,0 +1,4 @@
+#include "bitmap_font.hpp"
+#include <iostream>
+using namespace ofo;
+int main(){try{Bytes b(24+128*2+4+24);uint32_t v=5,count=128,n=1;float h=18;std::memcpy(b.data(),&v,4);std::memcpy(b.data()+4,&h,4);std::memcpy(b.data()+20,&count,4);std::memcpy(b.data()+280,&n,4);auto f=parse_font(b);if(!f.glyph('A')||!f.glyph(10000))throw std::runtime_error("fallback");FontData empty;if(empty.glyph('A'))throw std::runtime_error("empty fallback");f.lookup.assign(1,65535);if(f.glyph('A'))throw std::runtime_error("invalid fallback");b[24]=1;bool rejected=false;try{parse_font(b);}catch(...){rejected=true;}if(!rejected)throw std::runtime_error("bad glyph accepted");b.resize(23);rejected=false;try{parse_font(b);}catch(...){rejected=true;}if(!rejected)throw std::runtime_error("truncated accepted");std::cout<<"ABC bounds and fallback tests passed\n";}catch(const std::exception&e){std::cerr<<e.what();return 1;}}

@@ -1,0 +1,75 @@
+name: OpenFO Windows x64 — OpenGL + D3D9Ex
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'source/**'
+      - 'scripts/**'
+      - '.github/workflows/windows-build.yml'
+      - 'README.md'
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openfo-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Windows x64 / ${{ matrix.variant }}
+    runs-on: windows-2022
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [baseline_084, optimized_093]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Check Visual Studio CMake toolchain
+        run: |
+          cmake --version
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path $vswhere)) { throw 'VS 2022 is not available on this runner.' }
+          & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0) { throw 'VS2022 C++ tools missing' }
+
+      - name: Cache upstream dependency archives
+        uses: actions/cache@v4
+        with:
+          path: .downloads
+          key: openfo-deps-v1-${{ hashFiles('scripts/fetch-deps.ps1') }}
+          restore-keys: |
+            openfo-deps-v1-
+
+      - name: Build OpenGL, D3D9Ex, diagnostics and validator
+        run: |
+          & .\scripts\build-local.ps1 -Variant '${{ matrix.variant }}' -Toolchain msvc -Configuration RelWithDebInfo -Jobs 2 -MasterServer '34.118.26.31:27267' -RunTests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload executables and build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenFO-${{ matrix.variant }}-Windows-x64-${{ github.run_number }}
+          path: output/${{ matrix.variant }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Report result
+        if: always()
+        run: |
+          $out = 'output/${{ matrix.variant }}'
+          if (Test-Path $out) {
+            '### Build: ${{ matrix.variant }}' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            Get-ChildItem $out -File | ForEach-Object { "- $($_.Name)" } | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          }
