@@ -67,6 +67,17 @@ $khrPlatform = Join-Path $khrDir 'khrplatform.h'
 if (!(Test-Path -LiteralPath $khrPlatform)) {
     Get-FileOnce 'https://raw.githubusercontent.com/KhronosGroup/EGL-Registry/8e56e86e65687697ef54114cdb1afabdfac756bf/api/KHR/khrplatform.h' $khrPlatform
 }
+# Fetch the single-header nlohmann/json omitted from the source-only GitHub tree.
+$jsonDir = Join-Path $vendor 'nlohmann'
+New-Item -ItemType Directory -Force -Path $jsonDir | Out-Null
+$jsonHeader = Join-Path $jsonDir 'json.hpp'
+if (!(Test-Path -LiteralPath $jsonHeader)) {
+    Get-FileOnce 'https://raw.githubusercontent.com/nlohmann/json/v3.11.3/single_include/nlohmann/json.hpp' $jsonHeader
+}
+$jsonHash = (Get-FileHash -LiteralPath $jsonHeader -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($jsonHash -ne '9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6') {
+    throw "nlohmann/json 3.11.3 checksum mismatch: $jsonHash"
+}
 $required = @(
     (Join-Path $bullet 'btBulletDynamicsCommon.h'),
     (Join-Path $bullet 'BulletDynamics/Dynamics/btRigidBody.cpp'),
