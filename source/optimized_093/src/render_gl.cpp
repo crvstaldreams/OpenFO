@@ -127,7 +127,13 @@ struct Renderer::Impl {
  Json track_resources=Json::object(),menu_resources=Json::object();GLMaterialShaders native;std::unique_ptr<FrontendHud>hud;std::vector<std::unique_ptr<GPU>>menu_world,menu_car,hud_arrow;std::string menu_car_key,menu_error;bool menu_world_ready=false;size_t captured_meshes=0;
  std::vector<std::unique_ptr<TransientBuffer>> transient;size_t transient_cursor=0;TransientBuffer stream;VertexStream stream_ranges{0};size_t stream_upload_bytes=0,stream_discards=0,stream_appends=0;bool present_probe=false;
  std::map<std::string,std::string> strings;std::string label(const std::string&key,const std::string&fallback){auto i=strings.find(key);return i==strings.end()?fallback:i->second;}
- struct BotGPU {int id=0;VehicleConfig config;std::vector<std::unique_ptr<GPU>>body,wheels,driver;};std::vector<BotGPU>bot_gpu;
+ struct BotGPU {int id=0;VehicleConfig config;std::vector<std::unique_ptr<GPU>>body,wheels,driver;
+  BotGPU()=default;
+  BotGPU(const BotGPU&)=delete;
+  BotGPU& operator=(const BotGPU&)=delete;
+  BotGPU(BotGPU&&)=default;
+  BotGPU& operator=(BotGPU&&)=default;
+ };std::vector<BotGPU>bot_gpu;
  HWND hwnd;const Resources&r;GLBackendInfo*api=nullptr;GLDevice*d=nullptr;D3DPRESENT_PARAMETERS pp{};std::map<std::string,std::unique_ptr<Texture>>textures;std::map<std::string,std::unique_ptr<Texture>>normal_maps;size_t normal_map_bytes=0;std::set<std::string>surface_attempted;std::vector<std::string>missing;std::vector<std::unique_ptr<GPU>>track,car,wheel;VehicleConfig cfg;std::array<Texture*,6>sky{};Vegetation plants;Texture*plant_texture=nullptr,*map_texture=nullptr;Json map_config;Texture*face=nullptr,*needle=nullptr,*glass=nullptr,*nitro=nullptr,*shadow=nullptr;int width=1280,height=720;UINT draws=0,triangles=0;double scene_ms=0,hud_ms=0,present_ms=0;std::string adapter;float tire_scale=1,follow_fov=80;Vec follow_offset{0,2,-5},follow_target{};FollowCamera chase_camera;NitroCameraEnvelope nitro_camera;int previous_camera=-1;bool previous_photo=false;Vec sun{-.6f,-1,-.2f};Mat view,projection;Vec eye;bool lost=false;
  struct Query {GLQuery*start=nullptr,*end=nullptr,*frequency=nullptr,*disjoint=nullptr;bool pending=false;~Query(){release(start);release(end);release(frequency);release(disjoint);}};std::array<Query,4>queries;unsigned frame=0,samples=0,submitted=0;int active_query=-1;double gpu_ms=0;
  Impl(HWND h,const Resources&res,bool probe,bool optimize):optimized(optimize),present_probe(probe),hwnd(h),r(res){trace("opengl_create");backend_owner=std::make_unique<GLBackendInfo>();api=backend_owner.get();device_owner=std::make_unique<GLDevice>(hwnd);d=device_owner.get();adapter=d->adapter;radeon=radeon_gl_adapter(adapter);gpu_profile=gpu_performance_profile(adapter);pp.BackBufferWidth=width;pp.BackBufferHeight=height;pp.BackBufferCount=2;pp.BackBufferFormat=D3DFMT_X8R8G8B8;pp.hDeviceWindow=hwnd;
