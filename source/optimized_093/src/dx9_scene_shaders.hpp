@@ -1,7 +1,8 @@
 #pragma once
+#include <string>
 namespace ofo {
 // Native LH world coordinates. Authored receiver normals never depend on camera facing.
-inline const char* dx9_scene_hlsl(){return R"HLSL(
+inline const char* dx9_scene_hlsl(){static const std::string source=std::string(R"HLSL(
 float4 matrixRows[12]:register(c0);
 float4 environment:register(c12); // night, wet, sun, lamp cars
 float4 camera:register(c13);float4 sunlight:register(c14);
@@ -52,7 +53,8 @@ float4 poseRow2(int car){if(car==0)return poses[2];if(car==1)return poses[6];if(
 float4 lampMount(int car){if(car==0)return mounts[0];if(car==1)return mounts[1];if(car==2)return mounts[2];if(car==3)return mounts[3];if(car==4)return mounts[4];if(car==5)return mounts[5];if(car==6)return mounts[6];return mounts[7];}
 float4 carBoundsLo(int car){if(car==0)return boundsLo[0];if(car==1)return boundsLo[1];if(car==2)return boundsLo[2];if(car==3)return boundsLo[3];if(car==4)return boundsLo[4];if(car==5)return boundsLo[5];if(car==6)return boundsLo[6];return boundsLo[7];}
 float4 carBoundsHi(int car){if(car==0)return boundsHi[0];if(car==1)return boundsHi[1];if(car==2)return boundsHi[2];if(car==3)return boundsHi[3];if(car==4)return boundsHi[4];if(car==5)return boundsHi[5];if(car==6)return boundsHi[6];return boundsHi[7];}
-float3 localPoint(float3 p,int car){float4 q=float4(p,1);return float3(dot(poseRow0(car),q),dot(poseRow1(car),q),dot(poseRow2(car),q));}
+)HLSL")
+     + R"HLSL(float3 localPoint(float3 p,int car){float4 q=float4(p,1);return float3(dot(poseRow0(car),q),dot(poseRow1(car),q),dot(poseRow2(car),q));}
 float3 localDirection(float3 p,int car){return float3(dot(poseRow0(car).xyz,p),dot(poseRow1(car).xyz,p),dot(poseRow2(car).xyz,p));}
 float blocked(float3 source,float3 target,int own){float result=0;[loop]for(int k=0;k<8;k++)if(k<environment.w&&k!=own){float3 a=localPoint(source,k),b=localPoint(target,k)-a;float3 inv=(step(0,b)*2-1)/max(abs(b),.00001);float3 x=(carBoundsLo(k).xyz-a)*inv,y=(carBoundsHi(k).xyz-a)*inv;float3 lo=min(x,y),hi=max(x,y);float enter=max(max(lo.x,lo.y),max(lo.z,.001)),leave=min(min(hi.x,hi.y),min(hi.z,.995));result=max(result,step(enter,leave));}return result;}
 // Same pitched projection and nonlinear depth as the GL depth atlas.
@@ -117,7 +119,8 @@ float4 night_static_ps(Output i):COLOR0{
    float incidence=dot(localNormal,-normalize(q));
    float receive=mode==20?abs(incidence):max(saturate(incidence),smoothstep(.48,.85,n.y)*smoothstep(15,55,beam.z)*.30);
    if(cone>.001){
-    float visibility=shadowControl.z>.5?staticShadow(q,side,headlightReceiverBias(n.y,incidence),beamDx,beamDy):1;
+)HLSL"
+     + R"HLSL(    float visibility=shadowControl.z>.5?staticShadow(q,side,headlightReceiverBias(n.y,incidence),beamDx,beamDy):1;
     color+=(lightmapped?detail.rgb:tex.rgb)*float3(3.3,3.003,2.376)*cone*receive*visibility;
    }
   }
@@ -185,7 +188,8 @@ else if(mode==3){
  if(materialControl.w>.5)tex=lerp(tex,tex2D(dirtTexture,i.uv),saturate(i.color.a));
  float mask=shadowControl.y>.5?tex.a:0;float fresnel=.25+.75*grazing;
  float3 lit=saturate(tex.rgb*diffuse+.3*spec*mask);
- result=float4(materialOptions.x>.5?lerp(lit,nativeReflection(reflect(-v,n)),mask*fresnel):lit,1);
+)HLSL"
+     + R"HLSL( result=float4(materialOptions.x>.5?lerp(lit,nativeReflection(reflect(-v,n)),mask*fresnel):lit,1);
 }
 if(material.y>.5){bool cracked=materialOptions.z>.5||mode==15;float fresnel=.375+.625*grazing;
  float dirt=shadowControl.y>.5?tex.a:0;float amount=saturate(fresnel-dirt);
@@ -220,5 +224,5 @@ if(cone>.001&&beam.z>.12&&beam.z<150){
  color+=(albedo*3.3+highlight)*float3(1,.91,.72)*cone*receive*(1-blocked(source,i.world,car))*staticVisibility;
 }}}
 float distance=length(camera.xyz-i.world);if(mode==16&&materialControl.w>.5)color+=tex2D(dirtTexture,i.uv).rgb;float fogAmount=materialOptions.y*saturate((distance-100/(1+fog.w*3))/(650/(1+fog.w*2)-100/(1+fog.w*3)));color=lerp(color,fog.rgb,fogAmount);return float4(color,alpha);}
-)HLSL";}
+ )HLSL";return source.c_str();}
 }
